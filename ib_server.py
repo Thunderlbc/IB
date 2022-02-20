@@ -47,6 +47,7 @@ class IBClient(object):
         self._events = []
         self._ind_threads = [Indicator_UTC_No1(name="UTCNo1", ibc=self)]
         self._indicators = {}
+        self._contract = None
 
     def getQ(self):
         return self._q
@@ -116,7 +117,6 @@ class IBClient(object):
     def _start_all_indicators(self):
         for ind in self._ind_threads:
             ind.start()
-            ind.join()
 
     def start(self):
         self._start_all_indicators()
@@ -128,7 +128,7 @@ __IBC = IBClient(host='127.0.0.1', port=4002, clientid=991, max_size=10000)
 def subscribe_to_symbol(date):
     logger.info("Got Subscribe request for Date[{}]".format(date))
     __IBC.unsubscribe() # 退订其他
-    __IBC.subscribe("CL","NYMEX",date)
+    return __IBC.subscribe("CL","NYMEX",date)
 
 @app.route("/indicators/<name>", methods=['GET'])
 def get_indicator(name):

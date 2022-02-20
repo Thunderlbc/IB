@@ -12,9 +12,9 @@ class Indicator_UTC_No1(threading.Thread):
     def calc(self, q):
         HIGH,LOW,CLOSE = q['high'],q['low'],q['close']
         #logger.info("Indicator[{}]: got Q[{}]".format(self._name, q))
-        HIGH = np.array([1.5]*100)
-        LOW = np.array([1.2]*100)
-        CLOSE = np.array([1.24]*100)
+        #HIGH = np.array([1.5]*100)
+        #LOW = np.array([1.2]*100)
+        #CLOSE = np.array([1.24]*100)
         if len(HIGH) > 0:
 
             VAR6=((((2*CLOSE)+HIGH)+LOW)/4);
