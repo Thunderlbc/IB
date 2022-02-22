@@ -1,0 +1,7 @@
+# key需要按照python的变量命名规则，不可以出现-,global等。
+log:
+  mode: console # console or file
+  logdir: ./
+  level: DEBUG
+
+  

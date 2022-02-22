@@ -1,6 +1,6 @@
 import time
 import threading
-from utils import logger, MA, EMA, SMA, MA, REF, ABS, HHV, LLV
+from utils.trade_common import logger, MA, EMA, SMA, MA, REF, ABS, HHV, LLV
 import numpy as np
 
 class Indicator_UTC_No1(threading.Thread):
@@ -26,7 +26,7 @@ class Indicator_UTC_No1(threading.Thread):
             W=ABS(VAR12-VAR13)/REF(ABS(VAR12-VAR13),1);
             X=(VAR12-VAR13)*REF((VAR12-VAR13),1);
             current = (VAR12[-1], VAR13[-1], MAHS[-1], W[-1], X[-1])
-            logger.info("Indicator[{}] calculated Ind[{}]".format(self._name, current))
+            #logger.info("Indicator[{}] calculated Ind[{}]".format(self._name, current))
             self._ibc.set_indicator('UTC_No1', current)
 
     def run(self):
