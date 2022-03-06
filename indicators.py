@@ -2,6 +2,9 @@ import time
 import threading
 from utils.trade_common import logger, MA, EMA, SMA, MA, REF, ABS, HHV, LLV
 import numpy as np
+import pandas as pd
+import datetime
+from utils.influxdb_utils import write_dataframe
 
 class Indicator_UTC_No1(threading.Thread):
     def __init__(self, name, ibc):
@@ -10,7 +13,7 @@ class Indicator_UTC_No1(threading.Thread):
         self._ibc = ibc
         self.N = 10
     def calc(self, q):
-        HIGH,LOW,CLOSE = q['high'],q['low'],q['close']
+        HIGH,LOW,CLOSE,TS = q['high'],q['low'],q['close'],q['ts']
         #logger.info("Indicator[{}]: got Q[{}]".format(self._name, q))
         #HIGH = np.array([1.5]*100)
         #LOW = np.array([1.2]*100)
@@ -28,6 +31,15 @@ class Indicator_UTC_No1(threading.Thread):
             current = (VAR12[-1], VAR13[-1], MAHS[-1], W[-1], X[-1])
             #logger.info("Indicator[{}] calculated Ind[{}]".format(self._name, current))
             self._ibc.set_indicator('UTC_No1', current)
+
+            df = pd.DataFrame({
+                'ts' : TS-datetime.timedelta(hours=8),
+                'var13': VAR13[-1],
+                'var12': VAR12[-1],
+                'MAHS': MAHS[-1],
+                'W': W[-1],
+                'X': X[-1],
+            })
 
     def run(self):
         while True:

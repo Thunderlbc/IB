@@ -3,8 +3,11 @@ import requests
 import numpy as np
 from flask import Flask, request, redirect
 from flask.json import jsonify
+import datetime
+import pandas as pd
 import os
 from utils.trade_common import logger
+from utils.influxdb_utils import write_dataframe
 
 from sanic import Sanic
 from sanic.response import text,json
@@ -43,7 +46,8 @@ class IBClient(object):
             'ask': np.array([]),
             'high': np.array([]),
             'low': np.array([]),
-            'close': np.array([])
+            'close': np.array([]),
+            'ts': np.array([])
         }
         self._events = []
         self._ind_threads = [Indicator_UTC_No1(name="UTCNo1", ibc=self)]
@@ -59,6 +63,9 @@ class IBClient(object):
         #logger.info("Setting Indicator[{}] with Value[{}]".format(name,value))
         self._indicators[name] = value
 
+    """
+    行情相关接口
+    """
     async def checkConnected(self):
         return '000', self._is_connected, "OK"
     async def unsubscribe(self):
@@ -100,6 +107,19 @@ class IBClient(object):
                             self._q['low'] = np.append(self._q['low'], t.low)
                             self._q['close'] = np.append(self._q['close'], t.close)
 
+                            # write tick data to influx for displaying grafana
+                            df = pd.DataFrame({
+                                'ts': [t.time - datetime.timedelta(hours=8)],
+                                'bsize': t.bidSize,
+                                'asize': t.askSize,
+                                'bid': t.bid,
+                                'ask': t.ask,
+                                'high': t.high,
+                                'low': t.low,
+                                'close': t.close,
+                                'ts': t.time
+                            })
+                            write_dataframe(data=df, measurement="IB_CL_TICK")
                     #logger.info("Append[{}] with Length[{}]".format(t, len(self._q['bsize'])))
                 self._ib.pendingTickersEvent += onPendingTickers
                 self._events.append(onPendingTickers)
@@ -109,11 +129,11 @@ class IBClient(object):
                 logger.exception("Error when Subscribe[{}], Please Check".format(str(e)))
                 return "101", None, "Failed"
     async def get_latest_bar(self):
-        # bsize, bid, asize, ask, high, low, close
+        # bsize, bid, asize, ask, high, low, close, ts
         res = []
         if self._is_connected:
             if len(self._q['bid'])> 0:
-                keys = ['bsize','bid','asize','ask','high','low','close']
+                keys = ['bsize','bid','asize','ask','high','low','close', 'ts']
                 for k in keys:
                     res.append(self._q[k][-1])
             return '000', res, "OK"
@@ -121,6 +141,29 @@ class IBClient(object):
             return "100", None, "Not Connected, Please check"
     async def get_indicator(self, name):
         return '000', self._indicators[name], "OK"
+
+    """
+    交易相关接口
+    """
+    async def place_order(self, price, amt, direction, order_type):
+        """
+        返回的是一个orderId, int型，
+        """
+        logger.info("Placing Order with Price[{}] Amt[{}] Direction[{}] and OrderType[{}]".format(price, amt, direction, order_type))
+        if order_type == 'limit':
+            order = ibi.LimitOrder(direction, totalQuantity=amt, lmtPrice=price)
+        else:
+            order = ibi.MarketOrder(action=direction, totalQuantity=amt)
+        cur_trade = self._ib.placeOrder(contract=self._contract, order=order)
+        self._order_mappings[cur_trade.order.orderId] = cur_trade
+        return cur_trade.order.orderId
+
+    async def cancel_order(self, order_id):
+        cur_trade = self._order_mappings[order_id]
+        if cur_trade is not None:
+            self._ib.cancelOrder(cur_trade.order)
+    async def check_order(self, order_id):
+        cur_trade = self._order_mappings[order_id]
     
 if __name__ == "__main__":
     # This allows us to use a plain HTTP callback
